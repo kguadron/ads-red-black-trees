@@ -23,12 +23,29 @@ export class RBTNode {
 class RedBlackTree {
   constructor(Node = RBTNode) {
     this.Node = Node;
+    this._count = 0;
+    this._root = undefined;
   }
 
   lookup(key) {
+    // tree is empty
+    if (this._root === undefined) {
+      return undefined;
+    }
 
+    let node = this._root;
+    while (node.key) {
+      if (key > node.key) {
+        node = node.right;
+      } else if (key < node.key) {
+        node = node.left;
+      } else {  // found value
+        return node.value;
+      }
+    }
+    // did not find the value
+    return undefined;
   }
-
   /**
    * The two rotation functions are symetric, and could presumably
    * be collapsed into one that takes a direction 'left' or 'right',
@@ -103,12 +120,90 @@ class RedBlackTree {
   }
 
   _insertInternal(key, value) {
+    let node = this._root;
+    let prevNode; 
+    let insertedNode = new this.Node({ key: key, value: value });
+
+    // inserting at root
+    if (node === undefined) {
+      insertedNode.color = RBTNode.BLACK;
+      this._count++;
+      this._root = insertedNode;
+      return insertedNode;
+    }
+
+    while (node.key) {
+      if (key < node.key) {
+        prevNode = node;
+        node = node.left;
+      } else if (key > node.key) {
+        prevNode = node;
+        node = node.right;
+      } else {
+        node.value = value;
+        return node;
+      }
+    }
+
+    insertedNode.parent = prevNode;
+    this._count++;
+
+    if (insertedNode.key < prevNode.key) {
+      prevNode.left = insertedNode;
+      return insertedNode;
+    } else {
+      prevNode.right = insertedNode;
+      return insertedNode;
+    }
   }
 
   _insertRebalance(node) {
+    while (node.color === RBTNode.RED && node.parent.color === RBTNode.RED) {
+      let parent = node.parent;
+      let grandparent = parent.parent;
+      
+      if (parent === grandparent.left) { //parent is left child
+        let uncle = grandparent.right
+        if (uncle.color == RBTNode.RED) {
+          uncle.color = RBTNode.BLACK;
+          parent.color = RBTNode.BLACK;
+          grandparent.color = RBTNode.RED;
+          node = grandparent;
+        } else { // uncle is black
+          if (node === parent.left) {
+            parent.color = RBTNode.BLACK;
+            grandparent.color = RBTNode.RED;
+            this._rotateRight(grandparent);
+          } else { // node is right cbhild
+            parent = node;
+            node = node.parent;
+            this._rotateLeft(node);
+          }
+        } 
+      } else { // parent is right child
+        let uncle = grandparent.left;
+        if (uncle.color == RBTNode.RED) {
+          uncle.color = RBTNode.BLACK;
+          parent.color = RBTNode.BLACK;
+          grandparent.color = RBTNode.RED;
+          node = grandparent;
+        } else { // uncle is black
+          if (node === parent.left) {
+            parent = node;
+            node = node.parent;
+            this._rotateRight(node);
+          } else { // node is right child
+            parent.color = RBTNode.BLACK;
+            grandparent.color = RBTNode.RED;
+            this._rotateLeft(grandparent);
+          }
+        }
+      }
+    }
+    this._root.color = RBTNode.BLACK;
   }
 
-  insert(key, value) {
+  insert(key, value = true) {
     const node = this._insertInternal(key, value);
     this._insertRebalance(node);
   }
@@ -118,12 +213,20 @@ class RedBlackTree {
   }
 
   count() {
-
+    return this._count;
   }
 
   forEach(callback) {
-    
-  }
+    const visitSubtree = (node, callback, i = 0) => {
+      if (node && node.key) {
+        i = visitSubtree(node.left, callback, i);
+        callback({ key: node.key, value: node.value }, i, this);
+        i = visitSubtree(node.right, callback, i + 1);
+      }
+      return i;
+    };
+    visitSubtree(this._root, callback);
+  } 
 }
 
 
